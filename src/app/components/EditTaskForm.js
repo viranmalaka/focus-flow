@@ -44,7 +44,14 @@ export const EditTaskForm = ({ task, onUpdateTask, onCancel, allTags }) => {
     e.preventDefault();
     setError("");
 
-    let newTotalTime = task.sessionTime;
+    const updatedTaskData = {
+      title: title.trim(),
+      tags: tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
+      sessions: task.sessions || [],
+    };
 
     if (startTime && endTime) {
       const today = new Date();
@@ -60,7 +67,12 @@ export const EditTaskForm = ({ task, onUpdateTask, onCancel, allTags }) => {
         setError("End time must be after start time.");
         return;
       }
-      newTotalTime = (end - start) / 1000;
+      updatedTaskData.sessions = [
+        {
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+        },
+      ];
     } else if (startTime || endTime) {
       setError("Both start and end time must be set to manually log time.");
       return;
@@ -71,15 +83,6 @@ export const EditTaskForm = ({ task, onUpdateTask, onCancel, allTags }) => {
       return;
     }
 
-    const updatedTaskData = {
-      title: title.trim(),
-      tags: tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      totalTime: newTotalTime,
-      sessionTime: newTotalTime,
-    };
     onUpdateTask(task.id, updatedTaskData);
   };
 

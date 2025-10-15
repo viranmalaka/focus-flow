@@ -1,7 +1,7 @@
-import { formatTime } from "./utils";
+import { formatTime, calculateTotalTime } from "./utils";
 import { EditTaskForm } from "./EditTaskForm";
 import { PlayIcon, PauseIcon, StopIcon, EditIcon, TrashIcon } from "./icons";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export const TaskItem = ({
   task,
@@ -13,8 +13,19 @@ export const TaskItem = ({
   isEditing,
   onSetEditing,
 }) => {
-  const { title, tags, totalTime, isRunning } = task;
+  const { title, tags, isRunning, sessions } = task;
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [time, setTime] = useState(calculateTotalTime(sessions));
+
+  useEffect(() => {
+    setTime(calculateTotalTime(sessions));
+    if (isRunning) {
+      const timer = setInterval(() => {
+        setTime(calculateTotalTime(sessions));
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [isRunning, sessions]);
 
   if (isEditing) {
     return (
@@ -59,7 +70,7 @@ export const TaskItem = ({
       </div>
       <div className="flex items-center space-x-3">
         <p className="text-2xl font-mono text-white w-32 text-center">
-          {formatTime(totalTime)}
+          {formatTime(time)}
         </p>
         <button
           onClick={() => onToggle(task.id)}

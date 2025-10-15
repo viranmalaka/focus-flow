@@ -37,41 +37,25 @@ export default function App() {
     localStorage.setItem("focusFlowTags", JSON.stringify(allTags));
   }, [allTags]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTasks((prevTasks) =>
-        prevTasks.map((task) => {
-          if (task.isRunning) {
-            const now = Date.now();
-            const elapsed = (now - task.lastStartTime) / 1000;
-            return { ...task, totalTime: task.sessionTime + elapsed };
-          }
-          return task;
-        })
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleAddTask = (title, tags) => {
     const newTask = {
       id: crypto.randomUUID(),
       title,
       tags,
-      totalTime: 0,
-      sessionTime: 0,
+      sessions: [{ startTime: new Date().toISOString(), endTime: null }],
       isRunning: true,
-      lastStartTime: Date.now(),
       createdAt: new Date().toISOString(),
     };
 
-    const updatedTasks = tasks.map((task) =>
-      task.isRunning
-        ? { ...task, isRunning: false, sessionTime: task.totalTime }
-        : task
-    );
+    const updatedTasks = tasks.map((task) => {
+      if (task.isRunning) {
+        const lastSession = task.sessions[task.sessions.length - 1];
+        lastSession.endTime = new Date().toISOString();
+        return { ...task, isRunning: false };
+      }
+      return task;
+    });
 
-    // Add new task with an animation class
     setTasks([newTask, ...updatedTasks]);
 
     const newTags = new Set([...allTags, ...tags]);
@@ -79,23 +63,30 @@ export default function App() {
   };
 
   const handleToggleTask = (id) => {
-    if (editingTaskId) setEditingTaskId(null); // Exit edit mode if a timer is started
-    const now = Date.now();
+    if (editingTaskId) setEditingTaskId(null);
+    const now = new Date().toISOString();
     setTasks(
       tasks.map((task) => {
-        // If this is the task we are toggling
         if (task.id === id) {
           if (task.isRunning) {
-            // Pause it
-            return { ...task, isRunning: false, sessionTime: task.totalTime };
+            const lastSession = task.sessions[task.sessions.length - 1];
+            lastSession.endTime = now;
+            return { ...task, isRunning: false };
           } else {
-            // Start it
-            return { ...task, isRunning: true, lastStartTime: now };
+            return {
+              ...task,
+              isRunning: true,
+              sessions: [
+                ...task.sessions,
+                { startTime: now, endTime: null },
+              ],
+            };
           }
         }
-        // If another task is running, pause it
         if (task.isRunning) {
-          return { ...task, isRunning: false, sessionTime: task.totalTime };
+          const lastSession = task.sessions[task.sessions.length - 1];
+          lastSession.endTime = now;
+          return { ...task, isRunning: false };
         }
         return task;
       })
@@ -103,10 +94,13 @@ export default function App() {
   };
 
   const handleStopTask = (id) => {
+    const now = new Date().toISOString();
     setTasks(
       tasks.map((task) => {
         if (task.id === id && task.isRunning) {
-          return { ...task, isRunning: false, sessionTime: task.totalTime };
+          const lastSession = task.sessions[task.sessions.length - 1];
+          lastSession.endTime = now;
+          return { ...task, isRunning: false };
         }
         return task;
       })
@@ -116,9 +110,7 @@ export default function App() {
   const handleUpdateTask = (taskId, updatedData) => {
     setTasks(
       tasks.map((task) =>
-        task.id === taskId
-          ? { ...task, ...updatedData, isRunning: false }
-          : task
+        task.id === taskId ? { ...task, ...updatedData } : task
       )
     );
     const newTags = new Set([...allTags, ...updatedData.tags]);

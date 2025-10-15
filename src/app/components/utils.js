@@ -23,3 +23,17 @@ export const isToday = (date) => {
     taskDate.getFullYear() === today.getFullYear()
   );
 };
+
+export const calculateTotalTime = (sessions) => {
+  if (!sessions) return 0;
+
+  return (
+    sessions.reduce((total, session) => {
+      const startTime = new Date(session.startTime).getTime();
+      const endTime = session.endTime
+        ? new Date(session.endTime).getTime()
+        : new Date().getTime();
+      return total + (endTime - startTime);
+    }, 0) / 1000
+  );
+};
