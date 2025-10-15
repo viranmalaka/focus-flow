@@ -1,17 +1,20 @@
 import { formatTime } from "./utils";
 import { EditTaskForm } from "./EditTaskForm";
-import { PlayIcon, PauseIcon, StopIcon, EditIcon } from "./icons";
+import { PlayIcon, PauseIcon, StopIcon, EditIcon, TrashIcon } from "./icons";
+import { useState } from "react";
 
 export const TaskItem = ({
   task,
   onToggle,
   onStop,
   onUpdateTask,
+  onDeleteTask,
   allTags,
   isEditing,
   onSetEditing,
 }) => {
   const { title, tags, totalTime, isRunning } = task;
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   if (isEditing) {
     return (
@@ -84,6 +87,37 @@ export const TaskItem = ({
         >
           <EditIcon />
         </button>
+        {!confirmingDelete ? (
+          <button
+            onClick={() => setConfirmingDelete(true)}
+            className={`p-3 rounded-full bg-slate-700 text-white transition-colors duration-300 ${
+              isRunning ? "opacity-50 cursor-not-allowed" : "hover:bg-rose-600"
+            }`}
+            aria-label="Delete task"
+            title="Delete task"
+            disabled={isRunning}
+          >
+            <TrashIcon />
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-300">Delete?</span>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              className="px-2 py-1 rounded bg-slate-600 hover:bg-slate-500 text-white text-sm"
+              aria-label="Cancel delete"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onDeleteTask(task.id)}
+              className="px-2 py-1 rounded bg-rose-600 hover:bg-rose-500 text-white text-sm"
+              aria-label="Confirm delete"
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

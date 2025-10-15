@@ -126,6 +126,11 @@ export default function App() {
     setEditingTaskId(null);
   };
 
+  const handleDeleteTask = (id) => {
+    setTasks(tasks.filter((t) => t.id !== id));
+    if (editingTaskId === id) setEditingTaskId(null);
+  };
+
   return (
     <div className="bg-slate-900 min-h-screen text-white font-sans">
       <Header currentView={currentView} setCurrentView={setCurrentView} />
@@ -138,6 +143,7 @@ export default function App() {
               onToggle={handleToggleTask}
               onStop={handleStopTask}
               onUpdateTask={handleUpdateTask}
+              onDeleteTask={handleDeleteTask}
               allTags={allTags}
               editingTaskId={editingTaskId}
               setEditingTaskId={setEditingTaskId}

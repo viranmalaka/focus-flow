@@ -5,6 +5,7 @@ export const TaskList = ({
   onToggle,
   onStop,
   onUpdateTask,
+  onDeleteTask,
   allTags,
   editingTaskId,
   setEditingTaskId,
@@ -26,6 +27,7 @@ export const TaskList = ({
             onToggle={onToggle}
             onStop={onStop}
             onUpdateTask={onUpdateTask}
+            onDeleteTask={onDeleteTask}
             allTags={allTags}
             isEditing={task.id === editingTaskId}
             onSetEditing={setEditingTaskId}
