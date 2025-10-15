@@ -1,103 +1,167 @@
-import Image from "next/image";
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import { Header } from "./components/Header";
+import { AddTaskForm } from "./components/AddTaskForm";
+import { TaskList } from "./components/TaskList";
+import { AnalysisPage } from "./components/AnalysisPage";
 
-export default function Home() {
+export default function App() {
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const localData = localStorage.getItem("focusFlowTasks");
+      return localData ? JSON.parse(localData) : [];
+    } catch (error) {
+      console.error("Error parsing tasks from localStorage", error);
+      return [];
+    }
+  });
+
+  const [allTags, setAllTags] = useState(() => {
+    try {
+      const localData = localStorage.getItem("focusFlowTags");
+      return localData ? JSON.parse(localData) : [];
+    } catch (error) {
+      console.error("Error parsing tags from localStorage", error);
+      return [];
+    }
+  });
+
+  const [currentView, setCurrentView] = useState("tasks"); // 'tasks' or 'analysis'
+  const [editingTaskId, setEditingTaskId] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem("focusFlowTasks", JSON.stringify(tasks));
+  }, [tasks]);
+
+  useEffect(() => {
+    localStorage.setItem("focusFlowTags", JSON.stringify(allTags));
+  }, [allTags]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => {
+          if (task.isRunning) {
+            const now = Date.now();
+            const elapsed = (now - task.lastStartTime) / 1000;
+            return { ...task, totalTime: task.sessionTime + elapsed };
+          }
+          return task;
+        })
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleAddTask = (title, tags) => {
+    const newTask = {
+      id: crypto.randomUUID(),
+      title,
+      tags,
+      totalTime: 0,
+      sessionTime: 0,
+      isRunning: true,
+      lastStartTime: Date.now(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedTasks = tasks.map((task) =>
+      task.isRunning
+        ? { ...task, isRunning: false, sessionTime: task.totalTime }
+        : task
+    );
+
+    // Add new task with an animation class
+    setTasks([newTask, ...updatedTasks]);
+
+    const newTags = new Set([...allTags, ...tags]);
+    setAllTags(Array.from(newTags));
+  };
+
+  const handleToggleTask = (id) => {
+    if (editingTaskId) setEditingTaskId(null); // Exit edit mode if a timer is started
+    const now = Date.now();
+    setTasks(
+      tasks.map((task) => {
+        // If this is the task we are toggling
+        if (task.id === id) {
+          if (task.isRunning) {
+            // Pause it
+            return { ...task, isRunning: false, sessionTime: task.totalTime };
+          } else {
+            // Start it
+            return { ...task, isRunning: true, lastStartTime: now };
+          }
+        }
+        // If another task is running, pause it
+        if (task.isRunning) {
+          return { ...task, isRunning: false, sessionTime: task.totalTime };
+        }
+        return task;
+      })
+    );
+  };
+
+  const handleStopTask = (id) => {
+    setTasks(
+      tasks.map((task) => {
+        if (task.id === id && task.isRunning) {
+          return { ...task, isRunning: false, sessionTime: task.totalTime };
+        }
+        return task;
+      })
+    );
+  };
+
+  const handleUpdateTask = (taskId, updatedData) => {
+    setTasks(
+      tasks.map((task) =>
+        task.id === taskId
+          ? { ...task, ...updatedData, isRunning: false }
+          : task
+      )
+    );
+    const newTags = new Set([...allTags, ...updatedData.tags]);
+    setAllTags(Array.from(newTags));
+    setEditingTaskId(null);
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+    <div className="bg-slate-900 min-h-screen text-white font-sans">
+      <Header currentView={currentView} setCurrentView={setCurrentView} />
+      <main className="container mx-auto max-w-3xl p-4 sm:p-6">
+        {currentView === "tasks" ? (
+          <>
+            <AddTaskForm onAddTask={handleAddTask} allTags={allTags} />
+            <TaskList
+              tasks={tasks}
+              onToggle={handleToggleTask}
+              onStop={handleStopTask}
+              onUpdateTask={handleUpdateTask}
+              allTags={allTags}
+              editingTaskId={editingTaskId}
+              setEditingTaskId={setEditingTaskId}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+          </>
+        ) : (
+          <AnalysisPage tasks={tasks} />
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      <style>{`
+                .task-item {
+                    animation: slideIn 0.5s ease-out forwards;
+                }
+                @keyframes slideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+            `}</style>
     </div>
   );
 }
